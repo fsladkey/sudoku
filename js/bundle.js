@@ -19720,6 +19720,10 @@
 	
 	var _react2 = _interopRequireDefault(_react);
 	
+	var _Tile = __webpack_require__(164);
+	
+	var _Tile2 = _interopRequireDefault(_Tile);
+	
 	var _SudokuGame = __webpack_require__(161);
 	
 	var _SudokuGame2 = _interopRequireDefault(_SudokuGame);
@@ -19727,6 +19731,10 @@
 	var _Outline = __webpack_require__(162);
 	
 	var _Outline2 = _interopRequireDefault(_Outline);
+	
+	var _Solver = __webpack_require__(167);
+	
+	var _Solver2 = _interopRequireDefault(_Solver);
 	
 	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 	
@@ -19744,20 +19752,46 @@
 	
 	    var _this = _possibleConstructorReturn(this, Object.getPrototypeOf(Sudoku).call(this, props));
 	
-	    _this.game = new _SudokuGame2.default();
+	    _this.game = new _SudokuGame2.default({ populate: true });
 	    window.game = _this.game;
+	    _this.select = _this.select.bind(_this);
+	    _this.state = {
+	      selectedId: null,
+	      tiles: _this.game.tiles()
+	    };
 	    return _this;
 	  }
 	
 	  _createClass(Sudoku, [{
+	    key: 'componentDidMount',
+	    value: function componentDidMount() {
+	      this.game.register(this.handleChange);
+	      new _Solver2.default(this.game).run();
+	    }
+	  }, {
+	    key: 'handleChange',
+	    value: function handleChange() {
+	      this.setState({
+	        tiles: this.game.tiles()
+	      });
+	    }
+	  }, {
+	    key: 'select',
+	    value: function select(id) {
+	      this.setState({ selectedId: id });
+	    }
+	  }, {
 	    key: 'tiles',
 	    value: function tiles() {
-	      return this.game.tiles().map(function (tile, idx) {
-	        return _react2.default.createElement(
-	          'li',
-	          { key: idx, className: 'tile' },
-	          tile
-	        );
+	      var _this2 = this;
+	
+	      return this.game.tiles().map(function (tile) {
+	        return _react2.default.createElement(_Tile2.default, {
+	          key: tile.id,
+	          tile: tile,
+	          select: _this2.select,
+	          selectedId: _this2.state.selectedId
+	        });
 	      });
 	    }
 	  }, {
@@ -19788,28 +19822,109 @@
 
 /***/ },
 /* 161 */
-/***/ function(module, exports) {
+/***/ function(module, exports, __webpack_require__) {
 
-	"use strict";
+	'use strict';
 	
 	Object.defineProperty(exports, "__esModule", {
 	  value: true
 	});
-	function SudokuGame() {
+	
+	var _util = __webpack_require__(166);
+	
+	var _Tile = __webpack_require__(163);
+	
+	var _Tile2 = _interopRequireDefault(_Tile);
+	
+	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+	
+	var _callbacks = [];
+	
+	function SudokuGame(_ref) {
+	  var populate = _ref.populate;
+	
+	  this.values = (0, _util.range)(1, 10);
 	  this.grid = this.createGrid();
+	  if (populate) {
+	    this.setupEndGame();
+	    this.hideRandom();
+	  }
 	}
+	
+	SudokuGame.prototype.register = function (cb) {
+	  _callbacks.push(cb);
+	};
+	
+	SudokuGame.prototype.emitChange = function () {
+	  _callbacks.forEach(function (cb) {
+	    return cb();
+	  });
+	};
+	
+	SudokuGame.prototype.over = function () {
+	  return this.tileValues().every(function (value) {
+	    return value;
+	  });
+	};
+	
+	SudokuGame.prototype.get = function (pos) {
+	  var x = pos[0];
+	  var y = pos[1];
+	  return this.grid[x][y];
+	};
+	
+	SudokuGame.prototype.set = function (pos, val) {
+	  var x = pos[0];
+	  var y = pos[1];
+	  this.grid[x][y] = val;
+	  this.emitChange();
+	  return this.grid[x][y];
+	};
+	
+	SudokuGame.prototype.setupEndGame = function () {
+	  while (this.tiles().indexOf(null) !== -1) {
+	    this.grid = this.createGrid({ populate: false });
+	    this.fillGrid();
+	  }
+	};
+	
+	SudokuGame.prototype.hideRandom = function (chance) {
+	  for (var i = 0; i < 9; i++) {
+	    for (var j = 0; j < 9; j++) {
+	      if (Math.round(Math.random())) {
+	        var tile = this.grid[i][j];
+	        tile.value = null;
+	        tile.editable = true;
+	      }
+	    }
+	  }
+	};
 	
 	SudokuGame.prototype.createGrid = function () {
 	  var rows = [];
-	  var count = 0;
 	  for (var i = 0; i < 9; i++) {
 	    var row = rows[i] = [];
 	    for (var j = 0; j < 9; j++) {
-	      row.push(count);
-	      count++;
+	      row.push(null);
 	    }
 	  }
 	  return rows;
+	};
+	
+	SudokuGame.prototype.fillGrid = function () {
+	  var count = 0;
+	  for (var i = 0; i < 9; i++) {
+	    for (var j = 0; j < 9; j++) {
+	      var value = (0, _util.sample)(this.possibleValues(i, j)) || null;
+	      this.grid[i][j] = new _Tile2.default({
+	        id: count,
+	        pos: [i, j],
+	        game: this,
+	        value: value
+	      });
+	      count++;
+	    }
+	  }
 	};
 	
 	SudokuGame.prototype.tiles = function () {
@@ -19821,6 +19936,12 @@
 	    }
 	  }
 	  return tiles;
+	};
+	
+	SudokuGame.prototype.tileValues = function () {
+	  return this.tiles().map(function (tile) {
+	    return tile.value;
+	  });
 	};
 	
 	SudokuGame.prototype.horizantalTiles = function () {
@@ -19838,14 +19959,51 @@
 	  return tiles;
 	};
 	
-	SudokuGame.prototype.square = function (start) {
+	SudokuGame.prototype.square = function (startX, startY) {
 	  var tiles = [];
-	  for (var i = start; i < 3; i++) {
-	    for (var j = start; j < 3; j++) {
+	  for (var i = startX; i < startX + 3; i++) {
+	    for (var j = startY; j < startY + 3; j++) {
 	      tiles.push(this.grid[i][j]);
 	    }
 	  }
 	  return tiles;
+	};
+	
+	SudokuGame.prototype.allSquares = function () {
+	  var squares = [];
+	  for (var i = 0; i < 9; i += 3) {
+	    for (var j = 0; j < 9; j += 3) {
+	      squares.push(this.square(i, j));
+	    }
+	  }
+	  return squares;
+	};
+	
+	SudokuGame.prototype.getSquare = function (x, y) {
+	  x = (Math.floor(x / 3) + 1) * 3 - 3;
+	  y = (Math.floor(y / 3) + 1) * 3 - 3;
+	  return this.square(x, y);
+	};
+	
+	SudokuGame.prototype.allValues = function (x, y) {
+	  var square = this.getSquare(x, y);
+	  var row = this.horizantalTiles()[x];
+	  var col = this.verticalTiles()[y];
+	  return square.concat(row).concat(col);
+	};
+	
+	SudokuGame.prototype.possibleValues = function (x, y) {
+	  return (0, _util.minusArray)(this.values, this.allValues(x, y).map(function (tile) {
+	    return tile && tile.value;
+	  }));
+	};
+	
+	SudokuGame.prototype.render = function (x, y) {
+	  this.grid.forEach(function (row) {
+	    return console.log(row.map(function (tile) {
+	      return tile && tile.value;
+	    }));
+	  });
 	};
 	
 	exports.default = SudokuGame;
@@ -19879,6 +20037,299 @@
 	    boxes
 	  );
 	}
+
+/***/ },
+/* 163 */
+/***/ function(module, exports) {
+
+	"use strict";
+	
+	Object.defineProperty(exports, "__esModule", {
+	  value: true
+	});
+	function Tile(_ref) {
+	  var pos = _ref.pos;
+	  var value = _ref.value;
+	  var game = _ref.game;
+	  var id = _ref.id;
+	
+	  this.id = id;
+	  this.x = pos[0];
+	  this.y = pos[1];
+	  this.value = value;
+	  this.editable = false;
+	  this.game = game;
+	}
+	
+	Tile.prototype.dup = function (game) {
+	  return new Tile({
+	    id: this.id,
+	    pos: [this.x, this.y],
+	    value: this.value,
+	    editable: this.editable,
+	    game: game
+	  });
+	};
+	
+	Tile.prototype.position = function () {
+	  return [this.x, this.y];
+	};
+	
+	Tile.prototype.possibleValues = function () {
+	  return this.game.possibleValues(this.x, this.y);
+	};
+	
+	exports.default = Tile;
+
+/***/ },
+/* 164 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict';
+	
+	Object.defineProperty(exports, "__esModule", {
+	  value: true
+	});
+	
+	var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+	
+	var _react = __webpack_require__(2);
+	
+	var _react2 = _interopRequireDefault(_react);
+	
+	var _util = __webpack_require__(166);
+	
+	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+	
+	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+	
+	function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+	
+	function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+	
+	function isNumber(num) {
+	  var numbers = (0, _util.range)(1, 10).map(function (num) {
+	    return num.toString();
+	  });
+	  return numbers.includes(num);
+	}
+	
+	var Tile = function (_Component) {
+	  _inherits(Tile, _Component);
+	
+	  function Tile(props) {
+	    _classCallCheck(this, Tile);
+	
+	    var _this = _possibleConstructorReturn(this, Object.getPrototypeOf(Tile).call(this, props));
+	
+	    _this.handleChange = _this.handleChange.bind(_this);
+	    _this.handleSubmit = _this.handleSubmit.bind(_this);
+	    _this.handleBlur = _this.handleBlur.bind(_this);
+	    _this.state = {
+	      value: _this.props.tile.value
+	    };
+	    return _this;
+	  }
+	
+	  _createClass(Tile, [{
+	    key: 'className',
+	    value: function className() {
+	      var classList = ["tile"];
+	      if (this.props.selectedId === this.props.tile.id) classList.push("selected");
+	      if (!this.props.tile.editable) classList.push("given");
+	      return classList.join(" ");
+	    }
+	  }, {
+	    key: 'handleChange',
+	    value: function handleChange(e) {
+	      var value = e.currentTarget.value;
+	      var num = value[value.length - 1];
+	
+	      if (!isNumber(num)) {
+	        num = "";
+	      }
+	      this.setState({ value: num });
+	    }
+	  }, {
+	    key: 'handleBlur',
+	    value: function handleBlur(e) {
+	      this.setValue();
+	      this.props.select(null);
+	    }
+	  }, {
+	    key: 'handleSubmit',
+	    value: function handleSubmit(e) {
+	      e.preventDefault();
+	      this.setValue();
+	      this.props.select(null);
+	      this.input.blur();
+	    }
+	  }, {
+	    key: 'setValue',
+	    value: function setValue() {
+	      this.props.tile.value = parseInt(this.state.value);
+	    }
+	  }, {
+	    key: 'render',
+	    value: function render() {
+	      var _this2 = this;
+	
+	      return _react2.default.createElement(
+	        'li',
+	        { onClick: function onClick() {
+	            return _this2.props.select(_this2.props.tile.id);
+	          }, className: this.className() },
+	        _react2.default.createElement(
+	          'form',
+	          { onSubmit: this.handleSubmit },
+	          _react2.default.createElement('input', {
+	            onChange: this.handleChange,
+	            onBlur: this.handleBlur,
+	            value: this.state.value,
+	            ref: function ref(node) {
+	              return _this2.input = node;
+	            }
+	          })
+	        )
+	      );
+	    }
+	  }]);
+	
+	  return Tile;
+	}(_react.Component);
+	
+	exports.default = Tile;
+
+/***/ },
+/* 165 */,
+/* 166 */
+/***/ function(module, exports) {
+
+	"use strict";
+	
+	Object.defineProperty(exports, "__esModule", {
+	  value: true
+	});
+	exports.range = range;
+	exports.sample = sample;
+	exports.minusArray = minusArray;
+	function range(start, end) {
+	  var result = [];
+	
+	  for (var i = start; i < end; i++) {
+	    result.push(i);
+	  }
+	
+	  return result;
+	}
+	
+	function sample(array) {
+	  var index = Math.floor(array.length * Math.random());
+	  return array[index];
+	}
+	
+	function minusArray(values, otherValues) {
+	  var result = [];
+	  var groupSet = {};
+	
+	  for (var i = 0; i < otherValues.length; i++) {
+	    var el = otherValues[i];
+	    groupSet[el] = true;
+	  }
+	
+	  for (var j = 0; j < values.length; j++) {
+	    var value = values[j];
+	    if (!groupSet[value]) {
+	      result.push(value);
+	    }
+	  }
+	
+	  return result;
+	}
+
+/***/ },
+/* 167 */
+/***/ function(module, exports, __webpack_require__) {
+
+	"use strict";
+	
+	Object.defineProperty(exports, "__esModule", {
+	  value: true
+	});
+	
+	var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol ? "symbol" : typeof obj; };
+	
+	var _node = __webpack_require__(168);
+	
+	var _node2 = _interopRequireDefault(_node);
+	
+	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+	
+	function Solver(game) {
+	  this.game = game;
+	  this.start = new _node2.default({ game: game, move: null });
+	}
+	
+	Solver.prototype.run = function () {
+	  this.buildMoveTree(this.start);
+	};
+	
+	Solver.prototype.buildMoveTree = function (node) {
+	  var _this = this;
+	
+	  var currentGame = node.value.game;
+	  if (currentGame.over()) return;
+	  var tiles = currentGame.tiles();
+	  // let count = 1;
+	  this.game.render();
+	  // while (count <= 9) {
+	  var _loop = function _loop(i) {
+	    var tile = tiles[i];
+	    if (!tile.value) {
+	      var possibleValues = tile.possibleValues();
+	      if (possibleValues.length === 1) {
+	        tile.value = possibleValues[0];
+	        debugger;
+	        node.next = new _node2.default({ game: currentGame.dup(), move: tile });
+	        setTimeout(function () {
+	          _this.game.get([tile.x, tile.y]).value = tile.value;
+	          console.log("=======");
+	          _this.game.render();
+	          _this.buildMoveTree(node.next);
+	        }, 1000);
+	        return {
+	          v: void 0
+	        };
+	      }
+	    }
+	  };
+	
+	  for (var i = 0; i < tiles.length; i++) {
+	    var _ret = _loop(i);
+	
+	    if ((typeof _ret === "undefined" ? "undefined" : _typeof(_ret)) === "object") return _ret.v;
+	  }
+	  // count++;
+	  // }
+	};
+	
+	exports.default = Solver;
+
+/***/ },
+/* 168 */
+/***/ function(module, exports) {
+
+	"use strict";
+	
+	Object.defineProperty(exports, "__esModule", {
+	  value: true
+	});
+	function Node(value) {
+	  this.value = value;
+	  this.next = null;
+	}
+	
+	exports.default = Node;
 
 /***/ }
 /******/ ]);

@@ -2,6 +2,7 @@
   padding: 0;
   margin: 0;
   border: 0;
+  background: inherit;
 }
 
 body {
@@ -26,8 +27,27 @@ ul {
   border: 1px solid black;
   height: 55px;
   width: 55px;
-  padding: 16px;
   font-weight: bold;
+  cursor: pointer;
+}
+
+.tile form {
+  width: 100%;
+  height: 100%;
+}
+
+.tile input {
+  font-weight: bold;
+  font-size: 16px;
+  box-sizing: border-box;
+  display: block;
+  padding-left: 22px;
+  width: 100%;
+  height: 100%;
+}
+
+.tile:hover {
+  background-color: lightgoldenrodyellow;
 }
 
 .boxes {
@@ -35,7 +55,8 @@ ul {
   width: 495px;
   border: 3px solid black;
   height: 495px;
-  background rgba(75, 75, 75, 0.7)
+  background rgba(75, 75, 75, 0.7);
+  pointer-events: none;
 }
 
 .box {
@@ -46,4 +67,12 @@ ul {
   height: 165px;
   width: 165px;
   padding: 16px;
+}
+
+.selected {
+  background-color: #FFD281;
+}
+
+.given {
+  background-color: #eee;
 }

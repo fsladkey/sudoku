@@ -1,21 +1,46 @@
 import React, { Component } from 'react';
+import Tile from './Tile';
 import SudokuGame from '../game/SudokuGame';
 import Outline from '../game/Outline';
+import Solver from '../solver/Solver';
 
 export default class Sudoku extends Component {
 
   constructor(props) {
     super(props);
-    this.game = new SudokuGame();
+    this.game = new SudokuGame({ populate: true });
     window.game = this.game;
+    this.select = this.select.bind(this);
+    this.state = {
+      selectedId: null,
+      tiles: this.game.tiles()
+    };
+  }
+
+  componentDidMount() {
+    this.game.register(this.handleChange);
+    new Solver(this.game).run();
+  }
+
+  handleChange() {
+    this.setState({
+      tiles: this.game.tiles()
+    });
+  }
+
+  select(id) {
+    this.setState({ selectedId: id });
   }
 
   tiles() {
-    return this.game.tiles().map((tile, idx) => {
+    return this.game.tiles().map((tile) => {
       return (
-        <li key={idx} className="tile">
-          { tile }
-        </li>
+        <Tile
+          key={tile.id}
+          tile={tile}
+          select={this.select}
+          selectedId={this.state.selectedId}
+          />
       );
     });
   }
