@@ -24,8 +24,13 @@ export default class Tile extends Component {
     return classList.join(" ");
   }
 
+  componentWillReceiveProps(newProps) {
+    this.setState({ value: newProps.tile.value });
+  }
+
   handleChange(e) {
     const value = e.currentTarget.value;
+    if (!value) return;
     let num = value[value.length - 1];
 
     if (!isNumber(num)) { num = ""; }
@@ -49,6 +54,7 @@ export default class Tile extends Component {
   }
 
   render() {
+    const disabled = this.props.tile.editable ? "" : "disabled";
     return (
       <li onClick={() => this.props.select(this.props.tile.id)} className={ this.className() }>
         <form onSubmit={this.handleSubmit}>
@@ -56,6 +62,7 @@ export default class Tile extends Component {
             onChange={this.handleChange}
             onBlur={this.handleBlur}
             value={this.state.value}
+            disabled
             ref={(node) => this.input = node }
             />
         </form>

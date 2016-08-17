@@ -10,6 +10,7 @@ export default class Sudoku extends Component {
     super(props);
     this.game = new SudokuGame({ populate: true });
     window.game = this.game;
+    this.handleChange = this.handleChange.bind(this);
     this.select = this.select.bind(this);
     this.state = {
       selectedId: null,
@@ -33,7 +34,7 @@ export default class Sudoku extends Component {
   }
 
   tiles() {
-    return this.game.tiles().map((tile) => {
+    return this.state.tiles.map((tile) => {
       return (
         <Tile
           key={tile.id}

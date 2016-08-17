@@ -1,4 +1,4 @@
-import { range, sample, minusArray } from '../utils/util';
+import { range, sample, unique, minusArray } from '../utils/util';
 import Tile from './Tile';
 
 const _callbacks = [];
@@ -20,8 +20,34 @@ SudokuGame.prototype.emitChange = function () {
   _callbacks.forEach(cb => cb());
 };
 
-SudokuGame.prototype.over = function () {
+SudokuGame.prototype.isOver = function () {
   return this.tileValues().every(value => value);
+};
+
+SudokuGame.prototype.isValid = function () {
+  const tiles = this.tiles();
+  for (var i = 0; i < tiles.length; i++) {
+    let tile = tiles[i];
+    const square = this.getSquare(tile.x, tile.y);
+    const row = this.horizantalTiles()[tile.x];
+    const col = this.verticalTiles()[tile.y];
+    if (square.length !== unique(square).length ||
+        row.length !== unique(row).length ||
+        col.length !== unique(col).length) {
+      return false;
+    }
+  }
+  return true;
+};
+
+SudokuGame.prototype.dup = function () {
+  const duplicate = new SudokuGame({ populate: false });
+  for (var i = 0; i < this.grid.length; i++) {
+    for (var j = 0; j < this.grid.length; j++) {
+      duplicate.grid[i][j] = this.grid[i][j].dup(duplicate);
+    }
+  }
+  return duplicate;
 };
 
 SudokuGame.prototype.get = function (pos) {
@@ -33,14 +59,14 @@ SudokuGame.prototype.get = function (pos) {
 SudokuGame.prototype.set = function (pos, val) {
   const x = pos[0];
   const y = pos[1];
-  this.grid[x][y] = val;
+  this.grid[x][y].value = val;
   this.emitChange();
   return this.grid[x][y];
 };
 
 SudokuGame.prototype.setupEndGame = function () {
   while (this.tiles().indexOf(null) !== -1) {
-    this.grid = this.createGrid({populate: false });
+    this.grid = this.createGrid();
     this.fillGrid();
   }
 };
@@ -146,6 +172,10 @@ SudokuGame.prototype.allValues = function (x, y) {
   const row = this.horizantalTiles()[x];
   const col = this.verticalTiles()[y];
   return square.concat(row).concat(col);
+};
+
+SudokuGame.prototype.numEmptyTiles = function () {
+  return this.tileValues().filter(value => !value).length;
 };
 
 SudokuGame.prototype.possibleValues = function (x, y) {

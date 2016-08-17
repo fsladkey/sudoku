@@ -1,3 +1,14 @@
+export function unique(array) {
+  const result = [];
+
+  for (var i = 0; i < array.length; i++) {
+    let el = array[i];
+    if (!result.includes(el)) result.push(el);
+  }
+
+  return result;
+}
+
 export function range(start, end) {
   const result = [];
 
